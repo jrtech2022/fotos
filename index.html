@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galeria Pro - Sabrina</title>
+    <title>Galeria Signature - Sabrina</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
-        /* Custom styles for a Mobile First Pro look */
+        /* Custom styles for a Signature Edition look */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #030712; /* gray-950 */
@@ -43,7 +43,7 @@
         /* Photo card styles */
         .photo-card {
             opacity: 0; transform: translateY(20px);
-            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out, box-shadow 0.3s ease;
         }
         .photo-card.is-visible { opacity: 1; transform: translateY(0); }
         .photo-card .overlay { opacity: 0; transition: opacity 0.3s ease-in-out; }
@@ -52,7 +52,7 @@
         .photo-card:hover img { transform: scale(1.05); }
         .photo-card.selected {
             outline: 3px solid #818cf8; /* indigo-400 */
-            box-shadow: 0 0 20px rgba(129, 140, 248, 0.5);
+            box-shadow: 0 0 25px rgba(129, 140, 248, 0.6);
         }
         .status-icon {
             position: absolute; top: 0.5rem; right: 0.5rem;
@@ -106,7 +106,7 @@
         }
         #lightbox-actions {
             position: absolute; bottom: 0; left: 0; width: 100%;
-            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
             display: flex; justify-content: center; gap: 1rem;
             padding: 1.5rem;
         }
@@ -118,6 +118,21 @@
         }
         .action-btn.active { color: #c4b5fd; border-color: #818cf8; background-color: rgba(129, 140, 248, 0.1); }
         .action-btn svg { width: 24px; height: 24px; }
+        
+        #lightbox-comment-area {
+            position: absolute;
+            bottom: 100px; /* Position above action bar */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background-color: #1f2937;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #374151;
+            z-index: 1002;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
 
         /* Modal Styles */
         #modal-overlay {
@@ -141,15 +156,33 @@
         #scroll-to-top { position: fixed; bottom: -100px; right: 2rem; background-color: #818cf8; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: bottom 0.3s ease-in-out, transform 0.2s ease; z-index: 999; }
         #scroll-to-top:hover { transform: scale(1.1); }
         #scroll-to-top.visible { bottom: 2rem; }
+        
+        /* Preloader */
+        #preloader {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: #030712;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+        #preloader .spinner { position: static; }
     </style>
 </head>
 <body class="antialiased">
+
+    <div id="preloader">
+        <div class="spinner"></div>
+    </div>
 
     <div class="container mx-auto p-4 sm:p-8 max-w-7xl">
         
         <header class="text-center mb-16 md:mb-20">
             <p class="header-anim text-base font-medium text-indigo-400 tracking-wider uppercase">Jose Renato Fotografo</p>
-            <h1 class="header-anim mt-2 text-4xl sm:text-6xl md:text-7xl font-black text-gray-100">Galeria Pro</h1>
+            <h1 class="header-anim mt-2 text-4xl sm:text-6xl md:text-7xl font-black text-gray-100">Galeria Signature</h1>
             <h2 class="header-anim mt-2 text-3xl sm:text-5xl md:text-6xl font-bold gradient-text">Olá, Sabrina!</h2>
             <p class="header-anim mt-6 text-lg text-gray-400 max-w-3xl mx-auto">Sua galeria exclusiva está pronta. Uma experiência criada para que você possa apreciar e selecionar suas fotos com todo o cuidado.</p>
         </header>
@@ -159,6 +192,7 @@
                 <button data-filter="all" class="filter-btn active bg-indigo-500 text-white border-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Todas</button>
                 <button data-filter="selected" class="filter-btn bg-gray-800 text-indigo-300 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">Apenas Selecionadas</button>
                 <button data-filter="favorited" class="filter-btn bg-gray-800 text-indigo-300 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">Apenas Favoritas</button>
+                <button id="clear-selection-btn" class="bg-red-900/50 text-red-300 border border-red-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-800/50 hover:text-white transition-colors">Limpar Seleção</button>
             </div>
             <div id="photo-gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 md:gap-8">
                 <!-- Photos will be dynamically inserted here by JavaScript -->
@@ -200,7 +234,15 @@
             <img id="lightbox-img" src="" alt="Foto em destaque">
             <p id="photo-number-display"></p>
         </div>
+        <div id="lightbox-comment-area" class="hidden">
+            <textarea id="lightbox-comment-input" rows="3" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Escreva seu comentário aqui..."></textarea>
+            <button id="add-comment-btn" class="mt-2 w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700 transition-colors">Adicionar Comentário</button>
+        </div>
         <div id="lightbox-actions">
+            <button id="comment-action-btn" class="action-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.455.09-.934.09-1.405 0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+                <span>Comentar</span>
+            </button>
             <button id="select-lightbox-btn" class="action-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c.251.023.501.05.75.082m.75.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M4.5 20.25h15A2.25 2.25 0 0021.75 18v-2.625c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125V18a2.25 2.25 0 002.25 2.25z" /></svg>
                 <span>Ajuste</span>
@@ -233,18 +275,20 @@
 
     <!-- Scroll to Top Button -->
     <button id="scroll-to-top" title="Voltar ao topo">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7-7" /></svg>
     </button>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Element cache
+            const preloader = document.getElementById('preloader');
             const gallery = document.getElementById('photo-gallery');
             const commentBox = document.getElementById('comment-box');
             const sendButton = document.getElementById('send-whatsapp');
             const selectionCounter = document.getElementById('selection-counter');
             const scrollToTopBtn = document.getElementById('scroll-to-top');
             const filterBtns = document.querySelectorAll('.filter-btn');
+            const clearSelectionBtn = document.getElementById('clear-selection-btn');
             
             const lightbox = document.getElementById('lightbox');
             const lightboxImg = document.getElementById('lightbox-img');
@@ -252,6 +296,10 @@
             const selectLightboxBtn = document.getElementById('select-lightbox-btn');
             const favoriteLightboxBtn = document.getElementById('favorite-lightbox-btn');
             const downloadLightboxBtn = document.getElementById('download-lightbox-btn');
+            const commentActionBtn = document.getElementById('comment-action-btn');
+            const lightboxCommentArea = document.getElementById('lightbox-comment-area');
+            const lightboxCommentInput = document.getElementById('lightbox-comment-input');
+            const addCommentBtn = document.getElementById('add-comment-btn');
             const spinner = document.getElementById('spinner');
             const closeBtn = document.getElementById('close-btn');
             const prevBtn = document.getElementById('prev-btn');
@@ -265,12 +313,48 @@
             const photoBaseName = 'sabrina';
             const photoPath = 'fotos/album/';
             const phoneNumber = '5599982785958';
+            const storageKey = 'sabrinaGalleryState';
             
             // State
             let currentPhotoIndex = 0;
             const photoSources = [];
             let touchStartX = 0;
             let touchEndX = 0;
+
+            // --- Local Storage Functions ---
+            function saveState() {
+                const selected = Array.from(document.querySelectorAll('.photo-card.selected')).map(el => el.dataset.index);
+                const favorited = Array.from(document.querySelectorAll('.photo-card.favorited')).map(el => el.dataset.index);
+                const comments = commentBox.value;
+                const state = { selected, favorited, comments };
+                localStorage.setItem(storageKey, JSON.stringify(state));
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem(storageKey);
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    state.selected.forEach(index => {
+                        const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                        card?.classList.add('selected');
+                    });
+                    state.favorited.forEach(index => {
+                        const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                        card?.classList.add('favorited');
+                    });
+                    commentBox.value = state.comments;
+                    updateSelectionCounter();
+                }
+            }
+            
+            function clearState() {
+                localStorage.removeItem(storageKey);
+                document.querySelectorAll('.photo-card').forEach(card => {
+                    card.classList.remove('selected', 'favorited');
+                });
+                commentBox.value = '';
+                updateSelectionCounter();
+            }
 
             function updateSelectionCounter() {
                 const selectedCount = document.querySelectorAll('.photo-card.selected').length;
@@ -318,18 +402,25 @@
                 observeImages();
             }
 
-            function toggleSelection(index) {
+            function toggleSelection(index, forceAdd = false) {
                 const card = document.querySelector(`.photo-card[data-index='${index}']`);
                 if (!card) return;
+
+                const alreadySelected = card.classList.contains('selected');
+                if (forceAdd && alreadySelected) return;
+
                 const isSelected = card.classList.toggle('selected');
                 const photoRef = `Foto ${card.dataset.photoNumber}: `;
                 if (isSelected) {
-                    commentBox.value += (commentBox.value.trim() === '' ? '' : '\n') + photoRef;
+                    if (!commentBox.value.includes(photoRef)) {
+                       commentBox.value += (commentBox.value.trim() === '' ? '' : '\n') + photoRef;
+                    }
                 } else {
-                    commentBox.value = commentBox.value.replace(new RegExp(`\\n?${photoRef}.*`, 'g'), '').trim();
+                    updateMainCommentBox(index, '');
                 }
                 updateSelectionCounter();
                 updateLightboxActions(index);
+                saveState();
             }
 
             function toggleFavorite(index) {
@@ -337,6 +428,7 @@
                 if (!card) return;
                 card.classList.toggle('favorited');
                 updateLightboxActions(index);
+                saveState();
             }
             
             function observeImages() {
@@ -358,18 +450,20 @@
                 } else {
                     lightbox.classList.remove('active');
                     document.body.style.overflow = '';
+                    lightboxCommentArea.classList.add('hidden');
                 }
             }
 
             function openLightbox(index) {
-                const photoNumber = String(index + 1).padStart(2, '0');
-                history.pushState({ photoIndex: index }, `Foto ${photoNumber}`, `#foto-${photoNumber}`);
+                if (!lightbox.classList.contains('active')) {
+                    history.pushState({ lightbox: true }, `Galeria`, `#galeria`);
+                }
                 showPhoto(index);
                 renderLightboxUI(true);
             }
 
             function closeLightbox() {
-                if (location.hash) {
+                if (history.state && history.state.lightbox) {
                     history.back();
                 } else {
                     renderLightboxUI(false);
@@ -391,6 +485,7 @@
                 photoNumberDisplay.textContent = `Foto ${String(index + 1).padStart(2, '0')}`;
                 currentPhotoIndex = index;
                 updateLightboxActions(index);
+                lightboxCommentArea.classList.add('hidden');
             }
 
             function updateLightboxActions(index) {
@@ -455,8 +550,8 @@
             function handleTouchEnd(e) {
                 touchEndX = e.changedTouches[0].screenX;
                 const swipeDistance = touchEndX - touchStartX;
-                if (swipeDistance > 50) openLightbox(currentPhotoIndex - 1); // Swipe right
-                if (swipeDistance < -50) openLightbox(currentPhotoIndex + 1); // Swipe left
+                if (swipeDistance > 50) showPhoto(currentPhotoIndex - 1);
+                if (swipeDistance < -50) showPhoto(currentPhotoIndex + 1);
             }
             
             async function handleDownload() {
@@ -478,35 +573,78 @@
             }
 
             function handlePopState(event) {
-                if (!location.hash) {
+                if (event.state === null) {
                     renderLightboxUI(false);
-                } else {
-                    const photoIndex = event.state?.photoIndex;
-                    if (photoIndex !== undefined) {
-                        showPhoto(photoIndex);
-                        renderLightboxUI(true);
-                    }
                 }
+            }
+            
+            function loadCommentForLightbox(index) {
+                const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                const photoRef = `Foto ${card.dataset.photoNumber}: `;
+                const mainText = commentBox.value;
+                const regex = new RegExp(`^${photoRef}(.*)$`, 'm');
+                const match = mainText.match(regex);
+                
+                lightboxCommentInput.value = match ? match[1].trim() : '';
+            }
+
+            function updateMainCommentBox(index, newComment) {
+                const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                const photoRef = `Foto ${card.dataset.photoNumber}: `;
+                const mainText = commentBox.value;
+                const regex = new RegExp(`^${photoRef}.*$`, 'm');
+                
+                const newLine = `${photoRef}${newComment}`;
+
+                if (mainText.match(regex)) {
+                    if (newComment.trim() === '') {
+                         commentBox.value = mainText.replace(regex, '').replace(/^\s*[\r\n]/gm, '').trim();
+                    } else {
+                         commentBox.value = mainText.replace(regex, newLine);
+                    }
+                } else if (newComment.trim() !== '') {
+                    commentBox.value += (mainText.trim() === '' ? '' : '\n') + newLine;
+                }
+                saveState();
             }
 
             // --- Event Listeners ---
             sendButton?.addEventListener('click', sendWhatsAppMessage);
             closeBtn?.addEventListener('click', closeLightbox);
-            prevBtn?.addEventListener('click', () => openLightbox(currentPhotoIndex - 1));
-            nextBtn?.addEventListener('click', () => openLightbox(currentPhotoIndex + 1));
+            prevBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex - 1));
+            nextBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex + 1));
             selectLightboxBtn?.addEventListener('click', () => toggleSelection(currentPhotoIndex));
             favoriteLightboxBtn?.addEventListener('click', () => toggleFavorite(currentPhotoIndex));
             downloadLightboxBtn?.addEventListener('click', handleDownload);
             filterBtns.forEach(btn => btn.addEventListener('click', handleFilter));
+            commentBox.addEventListener('input', saveState);
+            clearSelectionBtn.addEventListener('click', clearState);
             
+            commentActionBtn.addEventListener('click', () => {
+                lightboxCommentArea.classList.toggle('hidden');
+                if (!lightboxCommentArea.classList.contains('hidden')) {
+                    loadCommentForLightbox(currentPhotoIndex);
+                    lightboxCommentInput.focus();
+                }
+            });
+
+            addCommentBtn.addEventListener('click', () => {
+                const newComment = lightboxCommentInput.value;
+                updateMainCommentBox(currentPhotoIndex, newComment);
+                if (newComment.trim() !== '') {
+                    toggleSelection(currentPhotoIndex, true);
+                }
+                lightboxCommentArea.classList.add('hidden');
+            });
+
             lightbox.addEventListener('touchstart', handleTouchStart, false);
             lightbox.addEventListener('touchend', handleTouchEnd, false);
             
             document.addEventListener('keydown', e => {
                 if (lightbox.classList.contains('active')) {
                     if (e.key === 'Escape') closeLightbox();
-                    if (e.key === 'ArrowLeft') openLightbox(currentPhotoIndex - 1);
-                    if (e.key === 'ArrowRight') openLightbox(currentPhotoIndex + 1);
+                    if (e.key === 'ArrowLeft') showPhoto(currentPhotoIndex - 1);
+                    if (e.key === 'ArrowRight') showPhoto(currentPhotoIndex + 1);
                 }
             });
             
@@ -523,15 +661,19 @@
                 localStorage.setItem('instructionsSeen', 'true');
             });
 
+            // --- Initial Load ---
             createGallery();
-            updateSelectionCounter();
+            loadState();
+
+            window.onload = () => {
+                preloader.style.opacity = '0';
+                setTimeout(() => {
+                    preloader.style.display = 'none';
+                }, 500);
+            };
             
-            // Check if page loaded with a photo hash
-            if (location.hash && location.hash.startsWith('#foto-')) {
-                const photoNum = parseInt(location.hash.replace('#foto-', ''), 10);
-                if (!isNaN(photoNum) && photoNum > 0 && photoNum <= totalPhotos) {
-                    openLightbox(photoNum - 1);
-                }
+            if (location.hash === '#galeria') {
+                history.replaceState(null, '', location.pathname);
             }
         });
     </script>
