@@ -1,177 +1,496 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seleção de Fotos - Sabrina</title>
+    <title>Galeria Pro - Sabrina</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
-        /* Custom styles */
+        /* Custom styles for a Mobile First Pro look */
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #030712; /* gray-950 */
+            background-image: radial-gradient(circle at 1px 1px, rgba(129, 140, 248, 0.1) 1px, transparent 0);
+            background-size: 2rem 2rem;
+            color: #d1d5db; /* gray-300 */
         }
-        /* Style for image selection on click */
+
+        .gradient-text {
+            background: linear-gradient(to right, #c4b5fd, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; text-fill-color: transparent;
+        }
+
+        /* Entrance animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in-up { animation: fadeInUp 0.8s ease-out forwards; opacity: 0; }
+        .header-anim:nth-child(1) { animation-delay: 0.1s; }
+        .header-anim:nth-child(2) { animation-delay: 0.2s; }
+        .header-anim:nth-child(3) { animation-delay: 0.3s; }
+        .header-anim:nth-child(4) { animation-delay: 0.4s; }
+
+        /* Photo card styles */
+        .photo-card {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .photo-card.is-visible { opacity: 1; transform: translateY(0); }
+        .photo-card .overlay { opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .photo-card:hover .overlay { opacity: 1; }
+        .photo-card img { transition: transform 0.3s ease-in-out; }
+        .photo-card:hover img { transform: scale(1.05); }
         .photo-card.selected {
-            outline: 4px solid #3b82f6; /* blue-500 */
-            transform: scale(1.03);
+            outline: 3px solid #818cf8; /* indigo-400 */
+            box-shadow: 0 0 20px rgba(129, 140, 248, 0.5);
         }
+        .status-icon {
+            position: absolute; top: 0.5rem; right: 0.5rem;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 50%; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            transform: scale(0); transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+        .photo-card.selected .checkmark, .photo-card.favorited .heart { transform: scale(1); }
+        .heart { fill: #f43f5e; }
+
+        /* Lightbox styles */
+        #lightbox {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #lightbox.active { opacity: 1; visibility: visible; }
+        #lightbox-content { position: relative; display: flex; align-items: center; justify-content: center; width:100%; height:100%; }
+        #lightbox img {
+            max-width: 90vw; max-height: 75vh; border-radius: 0.5rem;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        #lightbox img.loaded { opacity: 1; }
+        .lightbox-nav-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background-color: rgba(255, 255, 255, 0.05); color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.75rem; border-radius: 50%; cursor: pointer;
+            transition: background-color 0.2s ease; z-index: 1001;
+            display: none; /* Hidden on mobile, shown on desktop */
+        }
+        @media (min-width: 768px) { .lightbox-nav-btn { display: block; } }
+        #close-btn { top: 1.5rem; right: 1.5rem; transform: none; font-size: 1.5rem; padding: 0.5rem 1rem; position:absolute; z-index:1002;}
+        #prev-btn { left: 1.5rem; }
+        #next-btn { right: 1.5rem; }
+        #photo-number-display {
+            position: absolute; top: 2rem; left: 50%; transform: translateX(-50%);
+            color: white; font-size: 1.25rem; font-weight: bold;
+            background-color: rgba(0,0,0,0.5); padding: 0.5rem 1rem;
+            border-radius: 0.5rem; backdrop-filter: blur(5px);
+        }
+        #lightbox-actions {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            display: flex; justify-content: center; gap: 1rem;
+            padding: 1.5rem;
+        }
+        .action-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+            padding: 0.5rem; border-radius: 0.5rem; font-weight: 500;
+            color: #d1d5db; border: 1px solid transparent;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        .action-btn.active { color: #c4b5fd; border-color: #818cf8; background-color: rgba(129, 140, 248, 0.1); }
+        .action-btn svg { width: 24px; height: 24px; }
+
+        /* Modal Styles */
+        #modal-overlay {
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.7);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #modal-overlay.active { opacity: 1; visibility: visible; }
+        #modal-content {
+            background-color: #1f2937; border: 1px solid #374151;
+            padding: 2rem; border-radius: 1rem; max-width: 90vw; width: 500px;
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        #modal-overlay.active #modal-content { transform: scale(1); }
+
+        /* Spinner */
+        .spinner { border: 4px solid rgba(255, 255, 255, 0.2); border-left-color: #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; position: absolute; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Scroll to top button */
+        #scroll-to-top { position: fixed; bottom: -100px; right: 2rem; background-color: #818cf8; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: bottom 0.3s ease-in-out, transform 0.2s ease; z-index: 999; }
+        #scroll-to-top:hover { transform: scale(1.1); }
+        #scroll-to-top.visible { bottom: 2rem; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="antialiased">
 
     <div class="container mx-auto p-4 sm:p-8 max-w-7xl">
         
-        <!-- Header Section -->
-        <header class="text-center mb-8 md:mb-12">
-            <p class="text-sm font-medium text-gray-500 tracking-wider uppercase">Jose Renato Fotografo</p>
-            <h1 class="mt-2 text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">Olá, Sabrina!</h1>
-            <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Este é o seu portal exclusivo para visualização e seleção de fotos. Navegue pela galeria, clique nas imagens que deseja comentar e descreva os ajustes necessários na área de comentários abaixo.</p>
+        <header class="text-center mb-16 md:mb-20">
+            <p class="header-anim text-base font-medium text-indigo-400 tracking-wider uppercase">Jose Renato Fotografo</p>
+            <h1 class="header-anim mt-2 text-4xl sm:text-6xl md:text-7xl font-black text-gray-100">Galeria Pro</h1>
+            <h2 class="header-anim mt-2 text-3xl sm:text-5xl md:text-6xl font-bold gradient-text">Olá, Sabrina!</h2>
+            <p class="header-anim mt-6 text-lg text-gray-400 max-w-3xl mx-auto">Sua galeria exclusiva está pronta. Uma experiência criada para que você possa apreciar e selecionar suas fotos com todo o cuidado.</p>
         </header>
 
-        <!-- Photo Gallery Section -->
         <main>
-            <div id="photo-gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+            <div class="flex flex-wrap justify-center sm:justify-end gap-2 mb-6">
+                <button data-filter="all" class="filter-btn active bg-indigo-500 text-white border-indigo-500 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Todas</button>
+                <button data-filter="selected" class="filter-btn bg-gray-800 text-indigo-300 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">Apenas Selecionadas</button>
+                <button data-filter="favorited" class="filter-btn bg-gray-800 text-indigo-300 border border-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">Apenas Favoritas</button>
+            </div>
+            <div id="photo-gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 md:gap-8">
                 <!-- Photos will be dynamically inserted here by JavaScript -->
             </div>
         </main>
 
-        <!-- Comment and WhatsApp Section -->
-        <section class="mt-12 md:mt-16 bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Área de Ajustes</h2>
-            <p class="text-gray-600 mb-6">
-                Por favor, liste abaixo o número da foto e a alteração que você deseja.
-                <br>
-                <strong>Exemplo:</strong><br>
-                Foto 05: Remover a mancha na camisa.<br>
-                Foto 12: Deixar em preto e branco.
+        <section class="mt-16 md:mt-24 bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl shadow-indigo-500/10">
+            <div class="flex flex-wrap justify-between items-center mb-4">
+                <h2 class="text-3xl font-bold text-white">Área de Ajustes</h2>
+                <p id="selection-counter" class="text-indigo-400 font-medium bg-indigo-500/10 px-3 py-1 rounded-full">0 fotos para ajuste</p>
+            </div>
+            <p class="text-gray-400 mb-6">
+                As fotos selecionadas para ajuste aparecerão aqui. Descreva a alteração desejada para cada uma.
             </p>
             
-            <textarea id="comment-box" rows="10" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Digite seus comentários aqui..."></textarea>
+            <textarea id="comment-box" rows="10" class="w-full p-4 bg-gray-900 border border-gray-700 rounded-lg text-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200" placeholder="Seus comentários aparecerão aqui..."></textarea>
             
-            <button id="send-whatsapp" class="mt-6 w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-green-500 text-white font-bold text-lg rounded-lg hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition-transform transform hover:scale-105 duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Enviar Ajustes pelo WhatsApp
+            <button id="send-whatsapp" class="mt-6 w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 bg-green-500 text-white font-bold text-lg rounded-lg hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300/50 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-green-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                Enviar Seleção Final
             </button>
         </section>
 
-        <!-- Footer -->
-        <footer class="text-center mt-8 text-gray-500">
-            <p>&copy; 2024 Seu Nome Fotografia. Todos os direitos reservados.</p>
+        <footer class="text-center mt-16 text-gray-600">
+            <p>&copy; 2024 Jose Renato Fotografo. Design exclusivo para uma experiência única.</p>
         </footer>
     </div>
 
+    <!-- Lightbox Structure -->
+    <div id="lightbox">
+        <button id="close-btn" class="lightbox-nav-btn">&times;</button>
+        <div id="lightbox-content">
+            <button id="prev-btn" class="lightbox-nav-btn">&#10094;</button>
+            <button id="next-btn" class="lightbox-nav-btn">&#10095;</button>
+            <div id="spinner" class="spinner"></div>
+            <img id="lightbox-img" src="" alt="Foto em destaque">
+            <p id="photo-number-display"></p>
+        </div>
+        <div id="lightbox-actions">
+            <button id="select-lightbox-btn" class="action-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c.251.023.501.05.75.082m.75.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M4.5 20.25h15A2.25 2.25 0 0021.75 18v-2.625c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125V18a2.25 2.25 0 002.25 2.25z" /></svg>
+                <span>Ajuste</span>
+            </button>
+            <button id="favorite-lightbox-btn" class="action-btn">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                <span>Favoritar</span>
+            </button>
+            <button id="download-lightbox-btn" class="action-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                <span>Baixar</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Instructions Modal -->
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <h2 class="text-2xl font-bold text-white mb-4">Bem-vinda à sua Galeria!</h2>
+            <p class="text-gray-400 mb-6">Aqui vai um resumo rápido das ferramentas:</p>
+            <ul class="space-y-4 text-gray-300">
+                <li class="flex items-start gap-3"><strong class="text-indigo-400">Deslize:</strong> No celular, deslize para os lados para navegar pelas fotos em tela cheia.</li>
+                <li class="flex items-start gap-3"><strong class="text-indigo-400">Ajuste:</strong> Toque para selecionar fotos que precisam de alguma alteração.</li>
+                <li class="flex items-start gap-3"><strong class="text-indigo-400">Favoritar:</strong> Toque no coração para marcar as fotos que você mais amou.</li>
+                <li class="flex items-start gap-3"><strong class="text-indigo-400">Filtros:</strong> Use os botões acima da galeria para ver apenas suas fotos selecionadas ou favoritas.</li>
+            </ul>
+            <button id="close-modal-btn" class="mt-8 w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors">Entendi!</button>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scroll-to-top" title="Voltar ao topo">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+    </button>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Element cache
             const gallery = document.getElementById('photo-gallery');
             const commentBox = document.getElementById('comment-box');
             const sendButton = document.getElementById('send-whatsapp');
+            const selectionCounter = document.getElementById('selection-counter');
+            const scrollToTopBtn = document.getElementById('scroll-to-top');
+            const filterBtns = document.querySelectorAll('.filter-btn');
             
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const photoNumberDisplay = document.getElementById('photo-number-display');
+            const selectLightboxBtn = document.getElementById('select-lightbox-btn');
+            const favoriteLightboxBtn = document.getElementById('favorite-lightbox-btn');
+            const downloadLightboxBtn = document.getElementById('download-lightbox-btn');
+            const spinner = document.getElementById('spinner');
+            const closeBtn = document.getElementById('close-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+
+            const modalOverlay = document.getElementById('modal-overlay');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+
+            // Config
             const totalPhotos = 53;
             const photoBaseName = 'sabrina';
             const photoPath = 'fotos/album/';
-            const phoneNumber = '5599982785958'; // Seu número de WhatsApp com código do país
+            const phoneNumber = '5599982785958';
+            
+            // State
+            let currentPhotoIndex = 0;
+            const photoSources = [];
+            let touchStartX = 0;
+            let touchEndX = 0;
 
-            // --- Function to generate photo gallery ---
+            function updateSelectionCounter() {
+                const selectedCount = document.querySelectorAll('.photo-card.selected').length;
+                selectionCounter.textContent = `${selectedCount} foto${selectedCount !== 1 ? 's' : ''} para ajuste`;
+            }
+
             function createGallery() {
                 if (!gallery) return;
+                let fragment = document.createDocumentFragment();
                 for (let i = 1; i <= totalPhotos; i++) {
-                    // Format number with leading zero if needed (e.g., 1 -> 01)
                     const photoNumber = i.toString().padStart(2, '0');
-                    const photoFileName = `${photoBaseName}-${photoNumber}.png`;
-                    const photoSrc = `${photoPath}${photoFileName}`;
+                    const photoSrc = `${photoPath}${photoBaseName}-${photoNumber}.png`;
+                    photoSources.push(photoSrc);
 
-                    // Create card element for each photo
                     const photoCard = document.createElement('div');
-                    photoCard.className = 'photo-card group cursor-pointer transition-transform duration-300 ease-in-out transform hover:scale-105';
+                    photoCard.className = 'photo-card group cursor-pointer rounded-lg overflow-hidden relative shadow-lg';
                     photoCard.dataset.photoNumber = photoNumber;
+                    photoCard.dataset.index = i - 1;
 
-                    // Create image element
                     const img = document.createElement('img');
                     img.src = photoSrc;
                     img.alt = `Foto ${photoNumber} de Sabrina`;
-                    img.className = 'w-full h-auto object-cover rounded-lg shadow-md group-hover:shadow-xl transition-shadow duration-300';
-                    // Fallback image in case one is missing
-                    img.onerror = function() {
-                        this.onerror = null;
-                        this.src = `https://placehold.co/400x400/e2e8f0/4a5568?text=Foto+${photoNumber}`;
-                        this.alt = `Erro ao carregar foto ${photoNumber}`;
-                    };
+                    img.className = 'w-full h-auto object-cover';
+                    img.loading = 'lazy';
+                    img.onerror = () => { img.onerror = null; img.src = `https://placehold.co/400x400/1f2937/d1d5db?text=Foto+${photoNumber}`; };
                     
-                    // Create photo number label
-                    const numberLabel = document.createElement('p');
-                    numberLabel.className = 'text-center mt-2 font-medium text-gray-700';
-                    numberLabel.textContent = `Foto ${photoNumber}`;
+                    const overlay = document.createElement('div');
+                    overlay.className = 'overlay absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 text-center';
+                    overlay.innerHTML = `<p class="text-white text-xl font-bold drop-shadow-lg">Ver Foto ${photoNumber}</p>`;
 
-                    photoCard.appendChild(img);
-                    photoCard.appendChild(numberLabel);
-                    gallery.appendChild(photoCard);
+                    const checkmark = document.createElement('div');
+                    checkmark.className = 'status-icon checkmark';
+                    checkmark.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
                     
-                    // --- Interaction: Add photo number to comment box on click ---
-                    photoCard.addEventListener('click', function() {
-                        // Toggle a visual selection indicator
-                        this.classList.toggle('selected');
-                        
-                        const currentText = commentBox.value;
-                        const photoRef = `Foto ${this.dataset.photoNumber}: `;
-                        
-                        // Add or remove the photo reference from the text area
-                        if (this.classList.contains('selected')) {
-                           if (currentText.trim() === '') {
-                               commentBox.value += photoRef;
-                           } else {
-                               commentBox.value += `\n${photoRef}`;
-                           }
-                           commentBox.focus();
-                           // Move cursor to the end
-                           commentBox.setSelectionRange(commentBox.value.length, commentBox.value.length);
-                        } else {
-                            // This is a simple removal, might not be perfect for complex edits
-                            commentBox.value = commentBox.value.replace(new RegExp(`\\n?${photoRef}.*`, 'g'), '').trim();
-                        }
-                    });
+                    const heart = document.createElement('div');
+                    heart.className = 'status-icon heart';
+                    heart.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>`;
+
+                    photoCard.append(img, overlay, checkmark, heart);
+                    fragment.appendChild(photoCard);
+                    
+                    photoCard.addEventListener('click', () => openLightbox(i - 1));
                 }
+                gallery.appendChild(fragment);
+                observeImages();
             }
 
-            // --- Function to send message via WhatsApp ---
+            function toggleSelection(index) {
+                const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                if (!card) return;
+                const isSelected = card.classList.toggle('selected');
+                const photoRef = `Foto ${card.dataset.photoNumber}: `;
+                if (isSelected) {
+                    commentBox.value += (commentBox.value.trim() === '' ? '' : '\n') + photoRef;
+                } else {
+                    commentBox.value = commentBox.value.replace(new RegExp(`\\n?${photoRef}.*`, 'g'), '').trim();
+                }
+                updateSelectionCounter();
+                updateLightboxActions(index);
+            }
+
+            function toggleFavorite(index) {
+                const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                if (!card) return;
+                card.classList.toggle('favorited');
+                updateLightboxActions(index);
+            }
+            
+            function observeImages() {
+                const observer = new IntersectionObserver((entries, obs) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            obs.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.1 });
+                document.querySelectorAll('.photo-card').forEach(card => observer.observe(card));
+            }
+
+            function openLightbox(index) {
+                currentPhotoIndex = index;
+                showPhoto(currentPhotoIndex);
+                lightbox.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                lightbox.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            function showPhoto(index) {
+                if (index < 0) index = totalPhotos - 1;
+                if (index >= totalPhotos) index = 0;
+                
+                spinner.style.display = 'block';
+                lightboxImg.classList.remove('loaded');
+                
+                lightboxImg.onload = () => {
+                    spinner.style.display = 'none';
+                    lightboxImg.classList.add('loaded');
+                };
+                lightboxImg.src = photoSources[index];
+                photoNumberDisplay.textContent = `Foto ${String(index + 1).padStart(2, '0')}`;
+                currentPhotoIndex = index;
+                updateLightboxActions(index);
+            }
+
+            function updateLightboxActions(index) {
+                const card = document.querySelector(`.photo-card[data-index='${index}']`);
+                if (!card) return;
+                selectLightboxBtn.classList.toggle('active', card.classList.contains('selected'));
+                favoriteLightboxBtn.classList.toggle('active', card.classList.contains('favorited'));
+            }
+
+            function handleFilter(e) {
+                const filterType = e.target.dataset.filter;
+                if (!filterType) return;
+
+                filterBtns.forEach(btn => {
+                    btn.classList.remove('active', 'bg-indigo-500', 'text-white', 'border-indigo-500');
+                    btn.classList.add('bg-gray-800', 'text-indigo-300', 'border-gray-700');
+                });
+                e.target.classList.add('active', 'bg-indigo-500', 'text-white', 'border-indigo-500');
+                e.target.classList.remove('bg-gray-800', 'text-indigo-300', 'border-gray-700');
+                
+                document.querySelectorAll('.photo-card').forEach(card => {
+                    let show = true;
+                    if (filterType === 'selected') show = card.classList.contains('selected');
+                    if (filterType === 'favorited') show = card.classList.contains('favorited');
+                    card.style.display = show ? 'block' : 'none';
+                });
+            }
+
             function sendWhatsAppMessage() {
-                const message = commentBox.value.trim();
-                if (message === '') {
-                    // Simple validation feedback without using alert()
+                const favorited = Array.from(document.querySelectorAll('.photo-card.favorited'));
+                const comments = commentBox.value.trim();
+
+                if (comments === "" && favorited.length === 0) {
                     commentBox.classList.add('border-red-500', 'ring-red-500');
-                    commentBox.placeholder = "Por favor, escreva uma mensagem antes de enviar.";
+                    commentBox.placeholder = "Por favor, selecione ou favorite alguma foto antes de enviar.";
                     setTimeout(() => {
                         commentBox.classList.remove('border-red-500', 'ring-red-500');
-                        commentBox.placeholder = "Digite seus comentários aqui...";
+                        commentBox.placeholder = "Seus comentários aparecerão aqui...";
                     }, 3000);
                     return;
                 }
 
-                const introMessage = "Olá! Aqui estão os ajustes para as fotos da Sabrina:\n\n";
-                const fullMessage = introMessage + message;
-                const encodedMessage = encodeURIComponent(fullMessage);
-                const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+                let message = "Olá! Segue a minha seleção de fotos:\n\n";
+                if (comments) {
+                    message += " FOTOS PARA AJUSTE \n";
+                    message += "------------------------\n";
+                    message += `${comments}\n\n`;
+                }
 
-                // Open WhatsApp in a new tab
+                if (favorited.length > 0) {
+                    message += " FOTOS FAVORITAS (As que mais amei) \n";
+                    message += "-------------------------------------\n";
+                    message += favorited.map(card => `Foto ${card.dataset.photoNumber}`).join('\n');
+                }
+
+                const encodedMessage = encodeURIComponent(message);
+                const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
                 window.open(whatsappUrl, '_blank');
             }
 
-            // --- Event Listeners ---
-            if (sendButton) {
-                sendButton.addEventListener('click', sendWhatsAppMessage);
+            function handleTouchStart(e) { touchStartX = e.changedTouches[0].screenX; }
+            function handleTouchEnd(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                const swipeDistance = touchEndX - touchStartX;
+                if (swipeDistance > 50) showPhoto(currentPhotoIndex - 1); // Swipe right
+                if (swipeDistance < -50) showPhoto(currentPhotoIndex + 1); // Swipe left
+            }
+            
+            async function handleDownload() {
+                const src = photoSources[currentPhotoIndex];
+                const photoNumber = String(currentPhotoIndex + 1).padStart(2, '0');
+                try {
+                    const image = await fetch(src);
+                    const imageBlog = await image.blob();
+                    const imageURL = URL.createObjectURL(imageBlog);
+                    const link = document.createElement('a');
+                    link.href = imageURL;
+                    link.download = `preview-sabrina-${photoNumber}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (error) {
+                    console.error("Erro ao baixar imagem:", error);
+                }
             }
 
-            // --- Initial Load ---
+            // --- Event Listeners ---
+            sendButton?.addEventListener('click', sendWhatsAppMessage);
+            closeBtn?.addEventListener('click', closeLightbox);
+            prevBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex - 1));
+            nextBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex + 1));
+            selectLightboxBtn?.addEventListener('click', () => toggleSelection(currentPhotoIndex));
+            favoriteLightboxBtn?.addEventListener('click', () => toggleFavorite(currentPhotoIndex));
+            downloadLightboxBtn?.addEventListener('click', handleDownload);
+            filterBtns.forEach(btn => btn.addEventListener('click', handleFilter));
+            
+            lightbox.addEventListener('touchstart', handleTouchStart, false);
+            lightbox.addEventListener('touchend', handleTouchEnd, false);
+            
+            document.addEventListener('keydown', e => {
+                if (lightbox.classList.contains('active')) {
+                    if (e.key === 'Escape') closeLightbox();
+                    if (e.key === 'ArrowLeft') showPhoto(currentPhotoIndex - 1);
+                    if (e.key === 'ArrowRight') showPhoto(currentPhotoIndex + 1);
+                }
+            });
+            
+            window.addEventListener('scroll', () => scrollToTopBtn.classList.toggle('visible', window.scrollY > 300));
+            scrollToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+            // Modal logic
+            if (localStorage.getItem('instructionsSeen') !== 'true') {
+                modalOverlay.classList.add('active');
+            }
+            closeModalBtn.addEventListener('click', () => {
+                modalOverlay.classList.remove('active');
+                localStorage.setItem('instructionsSeen', 'true');
+            });
+
             createGallery();
+            updateSelectionCounter();
         });
     </script>
 
