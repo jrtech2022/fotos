@@ -87,12 +87,17 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0.75rem; border-radius: 50%; cursor: pointer;
             transition: background-color 0.2s ease; z-index: 1001;
-            display: none; /* Hidden on mobile, shown on desktop */
         }
-        @media (min-width: 768px) { .lightbox-nav-btn { display: block; } }
-        #close-btn { top: 1.5rem; right: 1.5rem; transform: none; font-size: 1.5rem; padding: 0.5rem 1rem; position:absolute; z-index:1002;}
-        #prev-btn { left: 1.5rem; }
-        #next-btn { right: 1.5rem; }
+        #close-btn { 
+            top: 1.5rem; left: 1.5rem; transform: none; font-size: 1.5rem; padding: 0.5rem 1rem; position:absolute; z-index:1002;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        #prev-btn { left: 1.5rem; display: none; }
+        #next-btn { right: 1.5rem; display: none; }
+        @media (min-width: 768px) { 
+            #prev-btn { display: block; }
+            #next-btn { display: block; }
+        }
         #photo-number-display {
             position: absolute; top: 2rem; left: 50%; transform: translateX(-50%);
             color: white; font-size: 1.25rem; font-weight: bold;
@@ -184,7 +189,10 @@
 
     <!-- Lightbox Structure -->
     <div id="lightbox">
-        <button id="close-btn" class="lightbox-nav-btn">&times;</button>
+        <button id="close-btn" class="lightbox-nav-btn">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+             <span>Voltar</span>
+        </button>
         <div id="lightbox-content">
             <button id="prev-btn" class="lightbox-nav-btn">&#10094;</button>
             <button id="next-btn" class="lightbox-nav-btn">&#10095;</button>
@@ -304,7 +312,7 @@
                     photoCard.append(img, overlay, checkmark, heart);
                     fragment.appendChild(photoCard);
                     
-                    photoCard.addEventListener('click', () => openLightbox(i - 1));
+                    photoCard.addEventListener('click', () => openLightbox(parseInt(photoCard.dataset.index)));
                 }
                 gallery.appendChild(fragment);
                 observeImages();
@@ -343,16 +351,29 @@
                 document.querySelectorAll('.photo-card').forEach(card => observer.observe(card));
             }
 
+            function renderLightboxUI(show) {
+                if (show) {
+                    lightbox.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    lightbox.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            }
+
             function openLightbox(index) {
-                currentPhotoIndex = index;
-                showPhoto(currentPhotoIndex);
-                lightbox.classList.add('active');
-                document.body.style.overflow = 'hidden';
+                const photoNumber = String(index + 1).padStart(2, '0');
+                history.pushState({ photoIndex: index }, `Foto ${photoNumber}`, `#foto-${photoNumber}`);
+                showPhoto(index);
+                renderLightboxUI(true);
             }
 
             function closeLightbox() {
-                lightbox.classList.remove('active');
-                document.body.style.overflow = '';
+                if (location.hash) {
+                    history.back();
+                } else {
+                    renderLightboxUI(false);
+                }
             }
 
             function showPhoto(index) {
@@ -434,8 +455,8 @@
             function handleTouchEnd(e) {
                 touchEndX = e.changedTouches[0].screenX;
                 const swipeDistance = touchEndX - touchStartX;
-                if (swipeDistance > 50) showPhoto(currentPhotoIndex - 1); // Swipe right
-                if (swipeDistance < -50) showPhoto(currentPhotoIndex + 1); // Swipe left
+                if (swipeDistance > 50) openLightbox(currentPhotoIndex - 1); // Swipe right
+                if (swipeDistance < -50) openLightbox(currentPhotoIndex + 1); // Swipe left
             }
             
             async function handleDownload() {
@@ -456,11 +477,23 @@
                 }
             }
 
+            function handlePopState(event) {
+                if (!location.hash) {
+                    renderLightboxUI(false);
+                } else {
+                    const photoIndex = event.state?.photoIndex;
+                    if (photoIndex !== undefined) {
+                        showPhoto(photoIndex);
+                        renderLightboxUI(true);
+                    }
+                }
+            }
+
             // --- Event Listeners ---
             sendButton?.addEventListener('click', sendWhatsAppMessage);
             closeBtn?.addEventListener('click', closeLightbox);
-            prevBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex - 1));
-            nextBtn?.addEventListener('click', () => showPhoto(currentPhotoIndex + 1));
+            prevBtn?.addEventListener('click', () => openLightbox(currentPhotoIndex - 1));
+            nextBtn?.addEventListener('click', () => openLightbox(currentPhotoIndex + 1));
             selectLightboxBtn?.addEventListener('click', () => toggleSelection(currentPhotoIndex));
             favoriteLightboxBtn?.addEventListener('click', () => toggleFavorite(currentPhotoIndex));
             downloadLightboxBtn?.addEventListener('click', handleDownload);
@@ -472,13 +505,14 @@
             document.addEventListener('keydown', e => {
                 if (lightbox.classList.contains('active')) {
                     if (e.key === 'Escape') closeLightbox();
-                    if (e.key === 'ArrowLeft') showPhoto(currentPhotoIndex - 1);
-                    if (e.key === 'ArrowRight') showPhoto(currentPhotoIndex + 1);
+                    if (e.key === 'ArrowLeft') openLightbox(currentPhotoIndex - 1);
+                    if (e.key === 'ArrowRight') openLightbox(currentPhotoIndex + 1);
                 }
             });
             
             window.addEventListener('scroll', () => scrollToTopBtn.classList.toggle('visible', window.scrollY > 300));
             scrollToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            window.addEventListener('popstate', handlePopState);
 
             // Modal logic
             if (localStorage.getItem('instructionsSeen') !== 'true') {
@@ -491,6 +525,14 @@
 
             createGallery();
             updateSelectionCounter();
+            
+            // Check if page loaded with a photo hash
+            if (location.hash && location.hash.startsWith('#foto-')) {
+                const photoNum = parseInt(location.hash.replace('#foto-', ''), 10);
+                if (!isNaN(photoNum) && photoNum > 0 && photoNum <= totalPhotos) {
+                    openLightbox(photoNum - 1);
+                }
+            }
         });
     </script>
 
